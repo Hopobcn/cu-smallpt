@@ -181,11 +181,15 @@ namespace smallpt {
 		HANDLE_ERROR(cudaMalloc((void**)&dev_Ls, nb_pixels * sizeof(Vector3)));
 		HANDLE_ERROR(cudaMemset(dev_Ls, 0, nb_pixels * sizeof(Vector3)));
 
+		auto countof = [](auto array){ return sizeof(array)/sizeof(array[0]); };
+
 		// Kernel execution
 		const dim3 nblocks(w / 16u, h / 16u);
 		const dim3 nthreads(16u, 16u);
-		kernel<<< nblocks, nthreads >>>(dev_spheres, _countof(g_spheres), 
+		kernel<<< nblocks, nthreads >>>(dev_spheres, countof(g_spheres),
 										w, h, dev_Ls, nb_samples);
+
+		HANDLE_ERROR(cudaDeviceSynchronize());
 
 		// Set up host memory
 		Vector3* Ls = (Vector3*)malloc(nb_pixels * sizeof(Vector3));

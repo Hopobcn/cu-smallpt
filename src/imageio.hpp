@@ -28,9 +28,7 @@ namespace smallpt {
 						 const Vector3* Ls, 
 						 const char* fname = "cu-image.ppm") noexcept {
 		
-		FILE* fp;
-		
-		fopen_s(&fp, fname, "w");
+		std::FILE* fp = fopen(fname, "w");
 		
 		std::fprintf(fp, "P3\n%u %u\n%u\n", w, h, 255u);
 		for (std::size_t i = 0; i < w * h; ++i) {
