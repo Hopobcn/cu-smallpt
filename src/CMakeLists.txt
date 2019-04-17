@@ -1,5 +1,5 @@
-add_executable(cu-smallpt
-    ${CMAKE_CURRENT_SOURCE_DIR}/kernel.cu)
+add_subdirectory(cuda)
+add_subdirectory(cpp/seq)
 
-target_include_directories(cu-smallpt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_features(cu-smallpt PUBLIC cxx_std_14)
+target_include_directories(cu-smallpt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(seq-smallpt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
