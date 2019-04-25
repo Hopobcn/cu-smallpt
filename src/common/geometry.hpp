@@ -18,6 +18,7 @@ namespace smallpt
 struct Ray
 {
 public:
+	using depth_t = std::uint32_t;
 
 	//---------------------------------------------------------------------
 	// Constructors and Destructors
@@ -58,7 +59,7 @@ public:
 
 	Vector3 m_o, m_d;
 	mutable double m_tmin, m_tmax;
-	std::uint32_t m_depth;
+	depth_t m_depth;
 };
 
 } // end namespace smallpt

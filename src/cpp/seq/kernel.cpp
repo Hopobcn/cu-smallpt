@@ -55,6 +55,9 @@ constexpr std::optional<std::size_t> Intersect(const Ray& ray) noexcept
 	return hit;
 }
 
+
+const Ray::depth_t  k_begin_depth = 4u;
+
 [[nodiscard]] static
 const Vector3 Radiance(const Ray& ray, RNG& rng) noexcept
 {
@@ -78,7 +81,7 @@ const Vector3 Radiance(const Ray& ray, RNG& rng) noexcept
 		F *= shape.m_f;
 
 		// Russian roulette
-		if (4u < r.m_depth)
+		if (r.m_depth >= k_begin_depth)
 		{
 			const double continue_probability = shape.m_f.Max();
 			if (rng.Uniform() >= continue_probability)

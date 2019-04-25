@@ -9,6 +9,7 @@
 
 #include "cuda/cuda_tools.hpp"
 #include "../common/vector.hpp"
+#include "../common/geometry.hpp"
 
 //-----------------------------------------------------------------------------
 // Defines
@@ -54,6 +55,9 @@ bool Intersect(const Sphere* d_spheres, std::size_t nb_spheres, const Ray& ray, 
 	return hit;
 }
 
+const Ray::depth_t  k_begin_depth = 4u;
+__constant__ Ray::depth_t dk_begin_depth;
+
 __device__ static
 const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ray& ray, curandState* state)
 {
@@ -78,7 +82,7 @@ const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ra
 		F *= shape.m_f;
 
 		// Russian roulette
-		if (4 < r.m_depth)
+		if (r.m_depth >= dk_begin_depth)
 		{
 			const double continue_probability = shape.m_f.Max();
 			if (curand_uniform_double(state) >= continue_probability)
@@ -190,9 +194,9 @@ void Render(std::uint32_t nb_samples) noexcept
 	HANDLE_ERROR(cudaMalloc((void**)&Ls_d, nb_pixels * sizeof(Vector3)));
 	HANDLE_ERROR(cudaMemset(Ls_d, 0, nb_pixels * sizeof(Vector3)));
 
-	//auto countof = [](auto array){ return sizeof(array)/sizeof(array[0]); };
+	HANDLE_ERROR(cudaMemcpyToSymbol(dk_begin_depth, &k_begin_depth, sizeof(Ray::depth_t)));
 
-    printf("g_spheres: %lu\n", size(g_spheres));
+	printf("g_spheres: %lu\n", size(g_spheres));
     printf("Ls: %d\n", nb_pixels);
 
 	// Kernel execution
