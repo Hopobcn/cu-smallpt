@@ -8,8 +8,8 @@
 #include "common/sphere.hpp"
 
 #include "cuda/cuda_tools.hpp"
-#include "../common/vector.hpp"
-#include "../common/geometry.hpp"
+#include "common/vector.hpp"
+#include "common/geometry.hpp"
 
 //-----------------------------------------------------------------------------
 // Defines
@@ -59,7 +59,7 @@ const Ray::depth_t  k_begin_depth = 4u;
 __constant__ Ray::depth_t dk_begin_depth;
 
 __device__ static
-const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ray& ray, curandState* state)
+const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ray& ray, RNG& rng)
 {
 	Ray r = ray;
 	Vector3 L;
@@ -85,7 +85,7 @@ const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ra
 		if (r.m_depth >= dk_begin_depth)
 		{
 			const double continue_probability = shape.m_f.Max();
-			if (curand_uniform_double(state) >= continue_probability)
+			if (rng.Uniform() >= continue_probability)
 			{
 				return L;
 			}
@@ -106,7 +106,7 @@ const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ra
 		case Reflection_t::Refractive:
 		{
 			double pr;
-			const Vector3 d = IdealSpecularTransmit(r.m_d, n, REFRACTIVE_INDEX_OUT, REFRACTIVE_INDEX_IN, pr, state);
+			const Vector3 d = IdealSpecularTransmit(r.m_d, n, REFRACTIVE_INDEX_OUT, REFRACTIVE_INDEX_IN, pr, rng);
 			F *= pr;
 			r = Ray(p, d, EPSILON_SPHERE, INFINITY, r.m_depth + 1u);
 			break;
@@ -118,7 +118,7 @@ const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ra
 			const Vector3 u = Normalize((abs(w.m_x) > 0.1 ? Vector3(0.0, 1.0, 0.0) : Vector3(1.0, 0.0, 0.0)).Cross(w));
 			const Vector3 v = w.Cross(u);
 
-			const Vector3 sample_d = CosineWeightedSampleOnHemisphere(curand_uniform_double(state), curand_uniform_double(state));
+			const Vector3 sample_d = CosineWeightedSampleOnHemisphere(rng.Uniform(), rng.Uniform());
 			const Vector3 d = Normalize(sample_d.m_x * u + sample_d.m_y * v + sample_d.m_z * w);
 			r = Ray(p, d, EPSILON_SPHERE, INFINITY, r.m_depth + 1u);
 			break;
@@ -131,10 +131,7 @@ const Vector3 Radiance(const Sphere* d_spheres, std::size_t nb_spheres, const Ra
 __global__ static
 void kernel(const Sphere* d_spheres, std::size_t nb_spheres, Vector3* Ls, std::uint32_t w, std::uint32_t h, std::uint32_t nb_samples)
 {
-	// RNG
-	curandState state;
-	curand_init(0u, 0u, 0u, &state);
-	//curand_init(offset, 0u, 0u, &state);
+	RNG rng;
 
 	const Vector3 eye = { 50.0, 52.0, 295.6 };
 	const Vector3 gaze = Normalize(Vector3(0.0, -0.042612, -1.0));
@@ -155,15 +152,15 @@ void kernel(const Sphere* d_spheres, std::size_t nb_spheres, Vector3* Ls, std::u
 
 					for (std::size_t s = 0u; s < nb_samples; ++s)
 					{ // samples per subpixel
-						const double u1 = 2.0 * curand_uniform_double(&state);
-						const double u2 = 2.0 * curand_uniform_double(&state);
+						const double u1 = 2.0 * rng.Uniform();
+						const double u2 = 2.0 * rng.Uniform();
 						const double dx = (u1 < 1.0) ? sqrt(u1) - 1.0 : 1.0 - sqrt(2.0 - u1);
 						const double dy = (u2 < 1.0) ? sqrt(u2) - 1.0 : 1.0 - sqrt(2.0 - u2);
 						const Vector3 d = cx * (((sx + 0.5 + dx) * 0.5 + x) / w - 0.5) +
 										  cy * (((sy + 0.5 + dy) * 0.5 + y) / h - 0.5) + gaze;
 
 						L += Radiance(d_spheres, nb_spheres,
-									  Ray(eye + d * 130, Normalize(d), EPSILON_SPHERE), &state) * (1.0 / nb_samples);
+									  Ray(eye + d * 130, Normalize(d), EPSILON_SPHERE), rng) * (1.0 / nb_samples);
 					}
 
 					Ls[i] += 0.25 * Clamp(L);

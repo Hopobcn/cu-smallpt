@@ -10,6 +10,7 @@
 // Includes
 //-----------------------------------------------------------------------------
 
+#include "cuda/rng.cuh"
 #include "common/vector.hpp"
 
 //-----------------------------------------------------------------------------
@@ -19,27 +20,27 @@ namespace smallpt
 {
 
 HOST_DEVICE_INLINE
-double Reflectance0(double n1, double n2)
+double Reflectance0(double n1, double n2) noexcept
 {
 	const double sqrt_R0 = (n1 - n2) / (n1 + n2);
 	return sqrt_R0 * sqrt_R0;
 }
 
 HOST_DEVICE_INLINE
-double SchlickReflectance(double n1, double n2, double c)
+double SchlickReflectance(double n1, double n2, double c) noexcept
 {
 	const double R0 = Reflectance0(n1, n2);
 	return R0 + (1.0 - R0) * c * c * c * c * c;
 }
 
 HOST_DEVICE_INLINE
-const Vector3 IdealSpecularReflect(const Vector3& d, const Vector3& n)
+const Vector3 IdealSpecularReflect(const Vector3& d, const Vector3& n) noexcept
 {
 	return d - 2.0 * n.Dot(d) * n;
 }
 
-__device__ inline
-const Vector3 IdealSpecularTransmit(const Vector3& d, const Vector3& n, double n_out, double n_in, double& pr,  curandState* state)
+DEVICE inline
+const Vector3 IdealSpecularTransmit(const Vector3& d, const Vector3& n, double n_out, double n_in, double& pr, RNG& rng) noexcept
 {
 	const Vector3 d_Re = IdealSpecularReflect(d, n);
 
@@ -61,7 +62,7 @@ const Vector3 IdealSpecularTransmit(const Vector3& d, const Vector3& n, double n
 
 	const double Re = SchlickReflectance(n_out, n_in, c);
 	const double p_Re = 0.25 + 0.5 * Re;
-	if (curand_uniform_double(state) < p_Re)
+	if (rng.Uniform() < p_Re)
 	{
 		pr = (Re / p_Re);
 		return d_Re;
